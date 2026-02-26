@@ -101,13 +101,9 @@ func (m Migrator) FullDataTypeOf(field *schema.Field) (expr clause.Expr) {
 		expr.SQL += " COMMENT " + m.Dialector.Explain("?", comment)
 	}
 
-	// Build TTl clause optionally after COMMENT
-	if ttl, ok := field.TagSettings["TTL"]; ok && ttl != "" {
-		expr.SQL += " TTL " + ttl
-	}
-
-	// Build CODEC compression algorithm optionally
+	// Build CODEC compression algorithm optionally (must come before TTL in ClickHouse syntax)
 	// NOTE: the codec algo name is case sensitive!
+	// ClickHouse column definition order: type [DEFAULT expr] [COMMENT str] [CODEC(...)] [TTL expr]
 	if codecstr, ok := field.TagSettings["CODEC"]; ok && codecstr != "" {
 		// parse codec one by one in the codec option
 		codecSlice := strings.Split(codecstr, ",")
@@ -117,6 +113,11 @@ func (m Migrator) FullDataTypeOf(field *schema.Field) (expr clause.Expr) {
 		}
 		codecSQL := fmt.Sprintf(" CODEC(%s) ", codecArgsSQL)
 		expr.SQL += codecSQL
+	}
+
+	// Build TTL clause optionally after CODEC
+	if ttl, ok := field.TagSettings["TTL"]; ok && ttl != "" {
+		expr.SQL += " TTL " + ttl
 	}
 
 	return expr
