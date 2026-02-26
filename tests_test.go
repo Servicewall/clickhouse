@@ -12,10 +12,11 @@ import (
 
 var DB *gorm.DB
 
+const dbDSN = "clickhouse://gorm:gorm@127.0.0.1:9942/gorm?dial_timeout=10s&read_timeout=20s"
+
 func init() {
 	var (
-		err   error
-		dbDSN = "tcp://localhost:9942?database=gorm&username=gorm&password=gorm&read_timeout=10&write_timeout=20"
+		err error
 	)
 
 	if DB, err = gorm.Open(clickhouse.Open(dbDSN), &gorm.Config{}); err != nil {

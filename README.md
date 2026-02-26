@@ -22,11 +22,12 @@ type User struct {
 }
 
 func main() {
-	dsn := "tcp://localhost:9000?database=gorm&username=gorm&password=gorm&read_timeout=10&write_timeout=20"
+	dsn := "clickhouse://gorm:gorm@localhost:9942/gorm?dial_timeout=10s&read_timeout=20s"
 	db, err := gorm.Open(clickhouse.Open(dsn), &gorm.Config{})
 	if err != nil {
 		panic("failed to connect database")
 	}
+
 	// Auto Migrate
 	db.AutoMigrate(&User{})
 	// Set table options
@@ -58,12 +59,48 @@ func main() {
 package main
 
 import (
+  std_ck "github.com/ClickHouse/clickhouse-go/v2"
+  "gorm.io/driver/clickhouse"
+  "gorm.io/gorm"
+)
+
+sqlDB, err := std_ck.OpenDB(&std_ck.Options{
+	Addr: []string{"127.0.0.1:9999"},
+	Auth: std_ck.Auth{
+		Database: "default",
+		Username: "default",
+		Password: "",
+	},
+	TLS: &tls.Config{
+		InsecureSkipVerify: true,
+	},
+	Settings: std_ck.Settings{
+		"max_execution_time": 60,
+	},
+	DialTimeout: 5 * time.Second,
+	Compression: &std_ck.Compression{
+		std_ck.CompressionLZ4,
+	},
+	Debug: true,
+})
+
+func main() {
+  db, err := gorm.Open(clickhouse.New(click.Config{
+    Conn: sqlDB, // initialize with existing database conn
+  })
+}
+```
+
+```go
+package main
+
+import (
   "gorm.io/driver/clickhouse"
   "gorm.io/gorm"
 )
 
 // refer to https://github.com/ClickHouse/clickhouse-go
-var dsn = "tcp://localhost:9000?database=gorm&username=gorm&password=gorm&read_timeout=10&write_timeout=20"
+var dsn = "clickhouse://username:password@host1:9000,host2:9000/database?dial_timeout=200ms&max_execution_time=60"
 
 func main() {
   db, err := gorm.Open(clickhouse.New(click.Config{
@@ -71,6 +108,7 @@ func main() {
     Conn: conn,                       // initialize with existing database conn
     DisableDatetimePrecision: true,   // disable datetime64 precision, not supported before clickhouse 20.4
     DontSupportRenameColumn: true,    // rename column not supported before clickhouse 20.4
+    DontSupportEmptyDefaultValue: false,  // do not consider empty strings as valid default values
     SkipInitializeWithVersion: false, // smart configure based on used version
     DefaultGranularity: 3,            // 1 granule = 8192 rows
     DefaultCompression: "LZ4",        // default compression algorithm. LZ4 is lossless
