@@ -300,7 +300,7 @@ func (m Migrator) AlterColumn(value interface{}, field string) error {
 	return m.RunWithValue(value, func(stmt *gorm.Statement) error {
 		if field := stmt.Schema.LookUpField(field); field != nil {
 			clusterOpts := m.extractClusterOption()
-			sQL := fmt.Sprintf("ALTER TABLE ?%s MODIFY COLUMN ? ?", clusterOpts)
+			sQL := fmt.Sprintf("ALTER TABLE ?%s MODIFY COLUMN ? ? SETTINGS materialize_ttl_after_modify = 0", clusterOpts)
 			return m.DB.Exec(
 				sQL,
 				clause.Table{Name: stmt.Table},
